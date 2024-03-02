@@ -1,24 +1,17 @@
 -module(matrix_supervisor).
--import(matrix_server,[serverLoop/1]).
--export([spawnServer/0]).
+-import(matrix_server,[server_loop/0]).
+-export([start_link/0]).
 
-spawnServer() ->
+start_link() ->
     process_flag(trap_exit, true),
-    ServerPid = spawn_link(fun() -> matrix_server:serverLoop(1) end),
-    register(matrix_server, ServerPid),
-    io:format("Hello from supervisor!~n"),
-    supervisorLoop(ServerPid).
+    Pid = spawn_link(fun() -> server_loop() end),
+    register(matrix_server, Pid),
+    supervisor_loop(Pid).
 
-supervisorLoop(ServerPid) ->
+supervisor_loop(Pid) ->
     receive
-        {'EXIT', ServerPid, normal} -> ok;
-        {'EXIT', ServerPid, _} ->
-            flushInbox(),
-            supervisorLoop(ServerPid)
-    end.
-
-flushInbox() ->
-    receive
-        _ -> flushInbox()
-    after 0 -> ok
+        {'EXIT', Pid, normal} -> ok;
+        {'EXIT', Pid, _} ->
+           unregister(matrix_server),
+           exit(normal) 
     end.
